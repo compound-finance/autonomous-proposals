@@ -1,0 +1,12 @@
+{
+  "name": "autonomous-proposals",
+  "version": "1.0.0",
+  "description": "Compound governance improvements - Compound Hack Day Submission",
+  "main": "index.js",
+  "repository": "git@github.com:compound-finance/autonomous-proposals.git",
+  "author": "Compound Finance",
+  "license": "BSD-3",
+  "dependencies": {
+    "eth-saddle": "^0.1.20"
+  }
+}
