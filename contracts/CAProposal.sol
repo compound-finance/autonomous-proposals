@@ -60,8 +60,8 @@ contract CAProposal {
         selfdestruct(proposer);
     }
 
-    /// @notice proposal delegates votes for staked COMP to itself
-    function delegateToItself() external {
+    /// @notice Proposal delegates votes for staked COMP to itself
+    function selfDelegate() external {
         IComp(comp).delegate(address(this));
     }
 

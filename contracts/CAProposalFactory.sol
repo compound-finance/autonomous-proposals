@@ -44,7 +44,8 @@ contract CAProposalFactory {
         CAProposal proposal = new CAProposal(msg.sender, targets, values, signatures, calldatas, description, comp, governor);
         emit CAProposalCreated(address(proposal), msg.sender, targets, values, signatures, calldatas, description);
 
+        // Transfer tokens to proposal and force proposal to delegate votes to itself
         IComp(comp).transferFrom(msg.sender, address(proposal), compProposalThreshold);
-        proposal.delegateToItself();
+        proposal.selfDelegate();
     }
 }
