@@ -4,9 +4,22 @@
   "description": "Compound governance improvements - Compound Hack Day Submission",
   "main": "index.js",
   "repository": "git@github.com:compound-finance/autonomous-proposals.git",
-  "author": "Compound Finance",
+  "author": "Compound Labs, Inc.",
   "license": "BSD-3",
   "dependencies": {
-    "eth-saddle": "^0.1.20"
+    "bignumber.js": "^9.0.0",
+    "eth-saddle": "^0.1.20",
+    "web3": "^1.2.11"
+  },
+  "scripts": {
+    "test": "./script/test",
+    "console": "npx -n --experimental-repl-await saddle console",
+    "compile": "npx saddle compile",
+    "deploy": "npx saddle deploy"
+  },
+  "resolutions": {
+    "**/ganache-core": "https://github.com/compound-finance/ganache-core.git#compound",
+    "scrypt.js": "https://registry.npmjs.org/@compound-finance/ethereumjs-wallet/-/ethereumjs-wallet-0.6.3.tgz",
+    "**/sha3": "^2.1.2"
   }
 }

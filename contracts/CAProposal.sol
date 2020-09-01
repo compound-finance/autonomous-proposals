@@ -22,8 +22,6 @@ contract CAProposal {
     /// @notice An event emitted when an autonomous proposal is launched
     event CAProposalLaunched(address indexed proposal, address indexed proposer, uint proposalId);
     event CAProposalTerminated(address indexed proposal, address indexed proposer);
-    // /// @notice An event emitted when a new autonomous proposal is created
-    // event CAProposalDelegatedTo(address proposal);
 
     constructor(address payable proposer_,
                 address[] memory targets_,
@@ -45,13 +43,6 @@ contract CAProposal {
         comp = comp_;
         governor = governor_;
     }
-
-    // TODO possibly delegateBySig
-    // function delegate() external {
-    //     IComp(comp).delegate(address(this));
-
-    //     emit CAProposalDelegatedTo(address(this), address(msg.se));
-    // }
 
     function launch() external returns (uint) {
         require(isReadyToLaunch(), 'Not enough delegations to launch proposal');

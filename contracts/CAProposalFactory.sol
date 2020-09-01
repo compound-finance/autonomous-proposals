@@ -32,8 +32,8 @@ contract CAProposalFactory {
         compProposalThreshold = compProposalThreshold_;
     }
 
-    // create a new CAP - Compound Autonomous Proposal
-    // call approve before calling this method
+    /// @notice create a new CAP - Compound Autonomous Proposal
+    /// @dev call `Comp.approve(factory_address, compProposalThreshold)` before calling this method
     function createCAProposal(address[] memory targets,
                        uint[] memory values,
                        string[] memory signatures,
@@ -45,8 +45,6 @@ contract CAProposalFactory {
 
         emit CAProposalCreated(address(cap), msg.sender, targets, values, signatures, calldatas, description);
 
-        //TODO think about if there is a better way to transfer tokens, inside Proposal constructor? etc
-        // Reentrancy on proposal creation is possible here?
         IComp(comp).transferFrom(msg.sender, address(cap), compProposalThreshold);
     }
 
