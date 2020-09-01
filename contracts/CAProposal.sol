@@ -46,23 +46,23 @@ contract CAProposal {
 
     function launch() external returns (uint) {
         require(isReadyToLaunch(), 'Not enough delegations to launch proposal');
-
         uint proposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
-
         emit CAProposalLaunched(address(this), proposer, proposalId);
-
         return proposalId;
     }
 
     function terminate() external {
-        // require(msg.sender == proposer, 'Only proposer can terminate proposal');
+        require(msg.sender == proposer, 'Only proposer can terminate proposal');
 
-        // Transfer Comp tokens from proposal contract back to the author
+        // Transfer Comp tokens from proposal contract back to the proposer
         IComp(comp).transfer(proposer, IComp(comp).balanceOf(address(this)));
-
         emit CAProposalTerminated(address(this), proposer);
-
         selfdestruct(proposer);
+    }
+
+    /// @notice proposal delegates votes for staked COMP to itself
+    function delegateToItself() external {
+        IComp(comp).delegate(address(this));
     }
 
     function isReadyToLaunch() public view returns (bool) {

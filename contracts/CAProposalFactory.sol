@@ -41,11 +41,10 @@ contract CAProposalFactory {
                        string memory description) external {
         require(IComp(comp).balanceOf(msg.sender) >= compProposalThreshold, 'Min Comp balance requirement is not met');
 
-        CAProposal cap = new CAProposal(msg.sender, targets, values, signatures, calldatas, description, comp, governor);
+        CAProposal proposal = new CAProposal(msg.sender, targets, values, signatures, calldatas, description, comp, governor);
+        emit CAProposalCreated(address(proposal), msg.sender, targets, values, signatures, calldatas, description);
 
-        emit CAProposalCreated(address(cap), msg.sender, targets, values, signatures, calldatas, description);
-
-        IComp(comp).transferFrom(msg.sender, address(cap), compProposalThreshold);
+        IComp(comp).transferFrom(msg.sender, address(proposal), compProposalThreshold);
+        proposal.delegateToItself();
     }
-
 }
