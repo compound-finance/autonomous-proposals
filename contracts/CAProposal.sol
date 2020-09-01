@@ -19,6 +19,10 @@ contract CAProposal {
     address public immutable comp;
     address public immutable governor;
 
+    // Real proposal id
+    uint public proposalId;
+    bool public voted;
+
     /// @notice An event emitted when an autonomous proposal is launched
     event CAProposalLaunched(address indexed proposal, address indexed proposer, uint proposalId);
     event CAProposalTerminated(address indexed proposal, address indexed proposer);
@@ -46,17 +50,30 @@ contract CAProposal {
 
     function launch() external returns (uint) {
         require(isReadyToLaunch(), 'Not enough delegations to launch proposal');
-        uint proposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
+
+        proposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
         emit CAProposalLaunched(address(this), proposer, proposalId);
+
         return proposalId;
+    }
+
+    function vote() public {
+        IGovernorAlpha(governor).castVote(proposalId, true);
+        voted = true;
     }
 
     function terminate() external {
         require(msg.sender == proposer, 'Only proposer can terminate proposal');
 
+        // Make sure that votes were transfered from autonomous proposal to real one
+        if (proposalId > 0 && !voted) {
+            vote();
+        }
+
         // Transfer Comp tokens from proposal contract back to the proposer
         IComp(comp).transfer(proposer, IComp(comp).balanceOf(address(this)));
         emit CAProposalTerminated(address(this), proposer);
+
         selfdestruct(proposer);
     }
 

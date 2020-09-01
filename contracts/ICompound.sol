@@ -14,4 +14,5 @@ interface IComp {
 interface IGovernorAlpha {
     function proposalThreshold() external pure returns (uint);
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) external returns (uint);
+    function castVote(uint proposalId, bool support) external;
 }
