@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 
 import './ICompound.sol';
 
-contract CAProposal {
-    address payable public immutable proposer;
+contract CrowdProposal {
+    address payable public immutable author;
 
     // Proposal data
     address[] public targets;
@@ -19,15 +19,14 @@ contract CAProposal {
     address public immutable comp;
     address public immutable governor;
 
-    // Real proposal id
-    uint public proposalId;
-    bool public voted;
+    // Governance proposal id
+    uint public govProposalId;
 
     /// @notice An event emitted when an autonomous proposal is launched
-    event CAProposalProposed(address indexed proposal, address indexed proposer, uint proposalId);
-    event CAProposalTerminated(address indexed proposal, address indexed proposer);
+    event CrowdProposalProposed(address indexed proposal, address indexed author, uint proposalId);
+    event CrowdProposalTerminated(address indexed proposal, address indexed author);
 
-    constructor(address payable proposer_,
+    constructor(address payable author_,
                 address[] memory targets_,
                 uint[] memory values_,
                 string[] memory signatures_,
@@ -35,7 +34,7 @@ contract CAProposal {
                 string memory description_,
                 address comp_,
                 address governor_) public {
-        proposer = proposer_;
+        author = author_;
 
         // Save proposal data
         targets = targets_;
@@ -51,32 +50,26 @@ contract CAProposal {
     function propose() external returns (uint) {
         require(isReadyToLaunch(), 'Not enough delegations to launch proposal');
 
-        proposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
-        emit CAProposalProposed(address(this), proposer, proposalId);
+        govProposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
+        emit CrowdProposalProposed(address(this), author, govProposalId);
 
-        return proposalId;
-    }
-
-    function vote() public {
-        if (proposalId > 0) {
-            IGovernorAlpha(governor).castVote(proposalId, true);
-            voted = true;
-        }
+        return govProposalId;
     }
 
     function terminate() external {
-        require(msg.sender == proposer, 'Only proposer can terminate proposal');
+        require(msg.sender == author, 'Only author can terminate proposal');
 
-        // Make sure that votes were transfered from autonomous proposal to real one
-        if (proposalId > 0 && !voted) {
-            vote();
+        // Transfer votes from the crowd proposal to the governance proposal
+        // TODO make sure author can get staked COMP back even if voting fails
+        if (IGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active) {
+            IGovernorAlpha(governor).castVote(govProposalId, true);
         }
 
-        // Transfer Comp tokens from proposal contract back to the proposer
-        IComp(comp).transfer(proposer, IComp(comp).balanceOf(address(this)));
-        emit CAProposalTerminated(address(this), proposer);
+        // Transfer Comp tokens from proposal contract back to the author
+        IComp(comp).transfer(author, IComp(comp).balanceOf(address(this)));
+        emit CrowdProposalTerminated(address(this), author);
 
-        selfdestruct(proposer);
+        selfdestruct(author);
     }
 
     /// @notice Proposal delegates votes for staked COMP to itself

@@ -12,7 +12,18 @@ interface IComp {
 }
 
 interface IGovernorAlpha {
+    enum ProposalState {
+        Pending,
+        Active,
+        Canceled,
+        Defeated,
+        Succeeded,
+        Queued,
+        Expired,
+        Executed
+    }
     function proposalThreshold() external pure returns (uint);
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) external returns (uint);
     function castVote(uint proposalId, bool support) external;
+    function state(uint proposalId) external view returns (ProposalState);
 }
