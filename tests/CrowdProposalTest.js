@@ -23,19 +23,18 @@ describe('CrowdProposal', () => {
       const signatures = ["getBalanceOf(address)"];
       const callDatas = [encodeParameters(['address'], [a1])];
       const description = "do nothing";
+
+      // Create proposal, mimic factory behavior
       proposal = await deploy('CrowdProposal', [author, targets, values, signatures, callDatas, description, comp._address, gov._address]);
+      // 1. Stake COMP
+      await send(comp, 'transfer', [proposal._address, uint(minCompThreshold)], { from: root });
+      // 2. Delegate votes from staked COMP
+      await call(proposal, 'selfDelegate', {from: root});
     });
 
-    describe('successful workflow', () => {
-
-      it('whole workflow', async () => {
-        // Fund proposal
-        await send(comp, 'transfer', [proposal._address, uint(minCompThreshold)], { from: root });
-
-        // Delegate votes to proposal
-        await call(proposal, 'selfDelegate', {from: root});
-
-        // Delegate votes to proposal
+    describe('full workflows', () => {
+      it('CrowdProposal is successful', async () => {
+        // Delegate more votes to the proposal
         const compWhale = accounts[1];
 
         const proposalThreshold = await call(gov, 'proposalThreshold');
@@ -53,7 +52,7 @@ describe('CrowdProposal', () => {
         expect(await call(comp, 'getCurrentVotes', [proposal._address])).toEqual(quorum.toFixed());
         expect(await call(proposal, 'isReadyToLaunch')).toEqual(true);
 
-        // Launch proposal
+        // Launch governance proposal
         const trx = await send(proposal, 'propose', {from: root});
 
         const proposalEvent = trx.events['CrowdProposalProposed'];
@@ -66,6 +65,42 @@ describe('CrowdProposal', () => {
         await sendRPC(web3, "evm_mine", []);
 
         expect(await call(comp, 'balanceOf', [author])).toEqual("0");
+
+        await send(proposal, 'terminate', {from: author});
+
+        // Staked COMP is transfered back to author
+        expect(await call(comp, 'balanceOf', [author])).toEqual(minCompThreshold.toString());
+
+        // Check votes for governance proposal
+        const proposalData = await call(gov, 'proposals', [govProposalId]);
+        expect(proposalData.againstVotes).toBe('0');
+        expect(proposalData.forVotes).toBe(quorum.toFixed());
+      });
+
+      it('CrowdProposal fails if not enough votes were delegated', async () => {
+        // Delegate more votes to the crowd proposal
+        const delegator1 = accounts[1];
+        const delegator2 = accounts[2];
+
+        const proposalThreshold = await call(gov, 'proposalThreshold');
+        const currentVotes = await call(comp, 'getCurrentVotes', [proposal._address]);
+        const quorum = new BigNumber(proposalThreshold).plus(1);
+        const remainingVotes = quorum.minus(new BigNumber(currentVotes));
+
+        // Proposal doesn't have enough votes to create governance proposal
+        expect(await call(proposal, 'isReadyToLaunch')).toEqual(false);
+
+        // Fund delegators with some COMP, but not enough for proposal to pass
+        await send(comp, 'transfer', [delegator1, uint(remainingVotes.dividedToIntegerBy(10).toFixed())], { from: root });
+        await send(comp, 'transfer', [delegator2, uint(remainingVotes.dividedToIntegerBy(10).toFixed())], { from: root });
+
+        // Delegation period
+        await send(comp, 'delegate', [proposal._address], {from: delegator1});
+        await send(comp, 'delegate', [proposal._address], {from: delegator2});
+        expect(await call(proposal, 'isReadyToLaunch')).toEqual(false);
+
+        // Time passes ..., nobody delegates, proposal author gives up and wants their staked COMP back
+        expect(await call(proposal, 'govProposalId')).toEqual("0");
         await send(proposal, 'terminate', {from: author});
 
         // Staked COMP is transfered back to author

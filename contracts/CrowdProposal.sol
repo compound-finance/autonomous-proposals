@@ -60,7 +60,7 @@ contract CrowdProposal {
         require(msg.sender == author, 'Only author can terminate proposal');
 
         // Transfer votes from the crowd proposal to the governance proposal
-        if (govProposalId > 0 && goIGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active) {
+        if (govProposalId > 0 && IGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active) {
             IGovernorAlpha(governor).castVote(govProposalId, true);
         }
 
