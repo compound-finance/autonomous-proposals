@@ -24,7 +24,7 @@ contract CAProposal {
     bool public voted;
 
     /// @notice An event emitted when an autonomous proposal is launched
-    event CAProposalLaunched(address indexed proposal, address indexed proposer, uint proposalId);
+    event CAProposalProposed(address indexed proposal, address indexed proposer, uint proposalId);
     event CAProposalTerminated(address indexed proposal, address indexed proposer);
 
     constructor(address payable proposer_,
@@ -48,18 +48,20 @@ contract CAProposal {
         governor = governor_;
     }
 
-    function launch() external returns (uint) {
+    function propose() external returns (uint) {
         require(isReadyToLaunch(), 'Not enough delegations to launch proposal');
 
         proposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
-        emit CAProposalLaunched(address(this), proposer, proposalId);
+        emit CAProposalProposed(address(this), proposer, proposalId);
 
         return proposalId;
     }
 
     function vote() public {
-        IGovernorAlpha(governor).castVote(proposalId, true);
-        voted = true;
+        if (proposalId > 0) {
+            IGovernorAlpha(governor).castVote(proposalId, true);
+            voted = true;
+        }
     }
 
     function terminate() external {

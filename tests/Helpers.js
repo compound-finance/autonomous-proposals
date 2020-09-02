@@ -39,6 +39,10 @@ function time(){
 	return Math.floor(new Date() / 1000);
 }
 
+function encodeParameters(types, values) {
+    return web3.eth.abi.encodeParameters(types, values);
+}
+
 async function currentBlockTimestamp(web3_) {
   const blockNumber = await sendRPC(web3_, "eth_blockNumber", []);
   const block = await sendRPC(web3_, "eth_getBlockByNumber", [ blockNumber.result, false]);
@@ -80,5 +84,6 @@ module.exports = {
   uint,
   keccak256,
   currentBlockTimestamp,
-  fixed
+  fixed,
+  encodeParameters
 };
