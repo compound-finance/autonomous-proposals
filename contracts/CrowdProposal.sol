@@ -21,6 +21,7 @@ contract CrowdProposal {
 
     // Governance proposal id
     uint public govProposalId;
+    bool public votesTransfered;
 
     /// @notice An event emitted when an autonomous proposal is launched
     event CrowdProposalProposed(address indexed proposal, address indexed author, uint proposalId);
@@ -48,7 +49,7 @@ contract CrowdProposal {
     }
 
     function propose() external returns (uint) {
-        require(isReadyToLaunch(), 'Not enough delegations to launch proposal');
+        require(isReadyToPropose(), 'Not enough delegations or was already proposed');
 
         govProposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
         emit CrowdProposalProposed(address(this), author, govProposalId);
@@ -59,13 +60,17 @@ contract CrowdProposal {
     function terminate() external {
         require(msg.sender == author, 'Only author can terminate proposal');
 
+        // TODO if proposal has enough votes, but wasn't proposed, what to do? still allow to terminate?
+        // require(isReadyToPropose(), 'Proposal got enough votes, propose before terminating')
+
         // Transfer votes from the crowd proposal to the governance proposal
-        if (govProposalId > 0 && IGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active) {
-            IGovernorAlpha(governor).castVote(govProposalId, true);
+        if (isReadyToMoveVotes()) {
+            transferVotesToGovProposal();
         }
 
-        // Transfer Comp tokens from proposal contract back to the author
+        // Transfer Comp tokens from the crowdproposal contract back to the author
         IComp(comp).transfer(author, IComp(comp).balanceOf(address(this)));
+
         emit CrowdProposalTerminated(address(this), author);
 
         selfdestruct(author);
@@ -76,7 +81,19 @@ contract CrowdProposal {
         IComp(comp).delegate(address(this));
     }
 
-    function isReadyToLaunch() public view returns (bool) {
-        return IComp(comp).getCurrentVotes(address(this)) >= IGovernorAlpha(governor).proposalThreshold();
+    function transferVotesToGovProposal() public {
+        require(isReadyToMoveVotes(), 'No active gov proposal or was already voted');
+        IGovernorAlpha(governor).castVote(govProposalId, true);
+        votesTransfered = true;
+    }
+
+    function isReadyToPropose() public view returns (bool) {
+        return govProposalId == 0 &&
+            IComp(comp).getCurrentVotes(address(this)) >= IGovernorAlpha(governor).proposalThreshold();
+    }
+
+    function isReadyToMoveVotes() public view returns (bool) {
+        return !votesTransfered && govProposalId > 0 &&
+            IGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active;
     }
 }

@@ -42,7 +42,7 @@ describe('CrowdProposal', () => {
         const quorum = new BigNumber(proposalThreshold).plus(1);
         const remainingVotes = quorum.minus(new BigNumber(currentVotes));
 
-        expect(await call(proposal, 'isReadyToLaunch')).toEqual(false);
+        expect(await call(proposal, 'isReadyToPropose')).toEqual(false);
 
         // Create Compound mini whale
         await send(comp, 'transfer', [compWhale, uint(remainingVotes.toFixed())], { from: root });
@@ -50,7 +50,7 @@ describe('CrowdProposal', () => {
         await send(comp, 'delegate', [proposal._address], {from: compWhale});
 
         expect(await call(comp, 'getCurrentVotes', [proposal._address])).toEqual(quorum.toFixed());
-        expect(await call(proposal, 'isReadyToLaunch')).toEqual(true);
+        expect(await call(proposal, 'isReadyToPropose')).toEqual(true);
 
         // Launch governance proposal
         const trx = await send(proposal, 'propose', {from: root});
@@ -88,7 +88,7 @@ describe('CrowdProposal', () => {
         const remainingVotes = quorum.minus(new BigNumber(currentVotes));
 
         // Proposal doesn't have enough votes to create governance proposal
-        expect(await call(proposal, 'isReadyToLaunch')).toEqual(false);
+        expect(await call(proposal, 'isReadyToPropose')).toEqual(false);
 
         // Fund delegators with some COMP, but not enough for proposal to pass
         await send(comp, 'transfer', [delegator1, uint(remainingVotes.dividedToIntegerBy(10).toFixed())], { from: root });
@@ -97,7 +97,7 @@ describe('CrowdProposal', () => {
         // Delegation period
         await send(comp, 'delegate', [proposal._address], {from: delegator1});
         await send(comp, 'delegate', [proposal._address], {from: delegator2});
-        expect(await call(proposal, 'isReadyToLaunch')).toEqual(false);
+        expect(await call(proposal, 'isReadyToPropose')).toEqual(false);
 
         // Time passes ..., nobody delegates, proposal author gives up and wants their staked COMP back
         expect(await call(proposal, 'govProposalId')).toEqual("0");
