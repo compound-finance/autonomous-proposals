@@ -22,10 +22,7 @@ describe('CrowdProposal', () => {
     let targets, values, signatures, callDatas, description;
 
     const minCompThreshold = 100e18;
-
-    async function getCurrentBlock() {
-      return parseInt((await sendRPC(web3, "eth_blockNumber", [])).result);
-    }
+    const minComp = new BigNumber(minCompThreshold).toFixed();
 
     beforeEach(async() => {
       [root, a1, ...accounts] = saddle.accounts;
@@ -42,7 +39,7 @@ describe('CrowdProposal', () => {
       description = "do nothing";
 
       // Create proposal, mimic factory behavior
-      proposal = await deploy('CrowdProposal', [author, targets, values, signatures, callDatas, description, comp._address, gov._address]);
+      proposal = await deploy('CrowdProposal', [author, uint(minCompThreshold), targets, values, signatures, callDatas, description, comp._address, gov._address]);
       // 1. Stake COMP
       await send(comp, 'transfer', [proposal._address, uint(minCompThreshold)], { from: root });
       // 2. Delegate votes from staked COMP
@@ -89,12 +86,15 @@ describe('CrowdProposal', () => {
       it('has given description', async () => {
         expect(await call(proposal, 'description')).toEqual(description);
       });
+
+      it('has given compProposalThreshold', async () => {
+        expect(await call(proposal, 'compProposalThreshold')).toEqual(minComp);
+      });
     });
 
     describe('propose', () => {
       it('should pass if enough votes were delegated', async() => {
         // Check start balance of votes
-        const minComp = new BigNumber(minCompThreshold).toFixed();
         expect(await call(comp, 'balanceOf', [proposal._address])).toEqual(minComp);
         expect(await call(comp, 'getCurrentVotes', [proposal._address])).toEqual(minComp);
 
@@ -142,13 +142,24 @@ describe('CrowdProposal', () => {
       it('should revert if not enough votes were delegated', async() => {
         // Check that there are some initial votes delegated
         expect(await call(comp, 'getCurrentVotes', [proposal._address]))
-          .toEqual(new BigNumber(minCompThreshold).toFixed());
+          .toEqual(minComp);
 
         // Propose reverts, not enough votes were delegated
         await expect(send(proposal, 'propose', {from: root}))
         .rejects.toRevert("revert Not enough delegations or was already proposed");
 
         expect(await call(proposal, 'govProposalId')).toEqual('0');
+      })
+
+      it('should revert if proposal was terminated', async() => {
+        await send(proposal, 'terminate', {from: author});
+
+        // Staked COMP is transfered back to author
+        expect(await call(comp, 'balanceOf', [author])).toEqual(minComp);
+
+        await expect(send(proposal, 'propose', {from: root}))
+        .rejects.toRevert("revert Not enough staked COMP");
+
       })
     });
 
@@ -179,8 +190,7 @@ describe('CrowdProposal', () => {
         expect(proposalData.forVotes).toBe(await call(comp, 'totalSupply'));
       })
 
-      // TODO discuss if this is OK?
-      it('should terminate without transfering votes!!!', async() => {
+      it('should terminate without transfering votes', async() => {
         // Delegate all votes to proposal
         await send(comp, 'delegate', [proposal._address], {from: root});
 
@@ -210,7 +220,6 @@ describe('CrowdProposal', () => {
         expect(await call(comp, 'balanceOf', [author])).toEqual(minCompThreshold.toString());
       })
 
-      // TODO discuss if this is OK?
       it('should terminate without proposing, even with enough delegated votes', async() => {
         // Delegate all votes to proposal
         await send(comp, 'delegate', [proposal._address], {from: root});
@@ -229,6 +238,154 @@ describe('CrowdProposal', () => {
         .rejects.toRevert("revert Only author can terminate proposal");
       })
 
+    });
+
+    describe('vote', () => {
+      it('should successfully vote for proposal', async() => {
+        // Propose
+        await send(comp, 'delegate', [proposal._address], {from: root});
+        await send(proposal, 'propose', {from: root});
+        const govProposalId = await call(proposal, 'govProposalId');
+
+        await sendRPC(web3, "evm_mine", []);
+
+        // Government proposal has not been voted for yet
+        expect(await call(proposal, 'voted')).toEqual(false);
+
+         // Vote and check number of votes and voted flag
+        await send(proposal, 'vote', {from: root});
+        const proposalData = await call(gov, 'proposals', [govProposalId]);
+        expect(proposalData.againstVotes).toBe('0');
+        expect(proposalData.forVotes).toBe(await call(comp, 'totalSupply'));
+        expect(await call(proposal, 'voted')).toEqual(true);
+      })
+
+      it('should be able to vote even after proposal was terminated', async() => {
+        // Propose
+        await send(comp, 'delegate', [proposal._address], {from: root});
+        await send(proposal, 'propose', {from: root});
+        const govProposalId = await call(proposal, 'govProposalId');
+
+        await send(proposal, 'terminate', {from: author});
+
+        // Government proposal has not been voted for yet
+        expect(await call(proposal, 'voted')).toEqual(false);
+
+        // Vote and check number of votes and voted flag
+        await send(proposal, 'vote', {from: root});
+        const proposalData = await call(gov, 'proposals', [govProposalId]);
+
+        // COMP stake is withdrawn by an author, so total number of votes for will be less
+        const leftVotes = new BigNumber(await call(comp, 'totalSupply')).minus(minComp).toFixed();
+        expect(proposalData.againstVotes).toBe('0');
+        expect(proposalData.forVotes).toBe(leftVotes);
+        expect(await call(proposal, 'voted')).toEqual(true);
+      })
+
+      it('should revert if proposal is not ready to be voted for', async() => {
+        expect(await call(proposal, 'isReadyToVote')).toBe(false);
+        // An attempt to vote
+        await expect(send(proposal, 'vote', {from: root}))
+        .rejects.toRevert("revert No active gov proposal or was already voted");
+      })
+    });
+
+    describe('isReadyToPropose', () => {
+      describe('false', () => {
+        it('already proposed', async() => {
+          // Propose
+          await send(comp, 'delegate', [proposal._address], {from: root});
+          await send(proposal, 'propose', {from: root});
+
+          expect(await call(proposal, 'isReadyToPropose')).toBe(false)
+        })
+
+        it('not enough delegations to meet gov proposal threshold', async() => {
+          // Not enough delegations to propose
+          expect(await call(proposal, 'isReadyToPropose')).toBe(false)
+        })
+      })
+
+      describe('true', () => {
+        it('enough delegations and has not proposed yet', async() => {
+          // Delegate all votes to proposal
+          await send(comp, 'delegate', [proposal._address], {from: root});
+
+          expect(await call(proposal, 'isReadyToPropose')).toBe(true);
+        })
+      })
+    });
+
+    describe('isReadyToVote', () => {
+      describe('false', () => {
+        it('has not been proposed yet', async() => {
+          expect(await call(proposal, 'isReadyToVote')).toBe(false);
+        })
+
+        it('already voted', async() => {
+          // Propose
+          await send(comp, 'delegate', [proposal._address], {from: root});
+          await send(proposal, 'propose', {from: root});
+
+          // Vote
+          await sendRPC(web3, "evm_mine", []);
+          await send(proposal, 'vote', {from: root});
+
+          expect(await call(proposal, 'isReadyToVote')).toBe(false);
+        })
+
+        it('gov proposal is not in active state', async() => {
+          // Propose
+          await send(comp, 'delegate', [proposal._address], {from: root});
+          await send(proposal, 'propose', {from: root});
+
+          expect(await call(proposal, 'isReadyToVote')).toBe(false);
+        })
+      })
+
+      describe('true', () => {
+        it('gov proposal is active and has not beed voted for yet', async() => {
+           // Propose
+           await send(comp, 'delegate', [proposal._address], {from: root});
+           await send(proposal, 'propose', {from: root});
+
+           // Voting delay
+           await sendRPC(web3, "evm_mine", []);
+           await sendRPC(web3, "evm_mine", []);
+
+           expect(await call(proposal, 'isReadyToVote')).toBe(true);
+        })
+      })
+    });
+
+    describe('selfDelegate', () => {
+      let newProposal;
+      beforeEach(async () => {
+        newProposal = await deploy('CrowdProposal', [author, uint(minCompThreshold), targets, values, signatures, callDatas, description, comp._address, gov._address]);
+        // Stake COMP
+        await send(comp, 'transfer', [newProposal._address, uint(minCompThreshold)], { from: root });
+      })
+
+      it('successfully delegate votes to itself', async () => {
+        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe('0');
+
+        await send(newProposal, 'selfDelegate');
+
+        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
+      })
+
+      it('self delegating multiple times', async () => {
+        // First self-delegation
+        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe('0');
+        await send(newProposal, 'selfDelegate');
+        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
+
+        // No effect of following self-delegations
+        await send(newProposal, 'selfDelegate');
+        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
+        await send(newProposal, 'selfDelegate');
+        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
+      })
     });
 
     describe('full workflows', () => {

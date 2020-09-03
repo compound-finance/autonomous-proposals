@@ -19,6 +19,8 @@ contract CrowdProposal {
     address public immutable comp;
     address public immutable governor;
 
+    uint public immutable compProposalThreshold;
+
     // Governance proposal id
     uint public govProposalId;
     bool public voted;
@@ -28,6 +30,7 @@ contract CrowdProposal {
     event CrowdProposalTerminated(address indexed proposal, address indexed author);
 
     constructor(address payable author_,
+                uint compProposalThreshold_,
                 address[] memory targets_,
                 uint[] memory values_,
                 string[] memory signatures_,
@@ -36,6 +39,7 @@ contract CrowdProposal {
                 address comp_,
                 address governor_) public {
         author = author_;
+        compProposalThreshold = compProposalThreshold_;
 
         // Save proposal data
         targets = targets_;
@@ -49,6 +53,7 @@ contract CrowdProposal {
     }
 
     function propose() external returns (uint) {
+        require(IComp(comp).balanceOf(address(this)) >= compProposalThreshold, 'Not enough staked COMP');
         require(isReadyToPropose(), 'Not enough delegations or was already proposed');
 
         govProposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
@@ -60,9 +65,6 @@ contract CrowdProposal {
     function terminate() external {
         require(msg.sender == author, 'Only author can terminate proposal');
 
-        // TODO if proposal has enough votes, but wasn't proposed, what to do? still allow to terminate?
-        // require(isReadyToPropose(), 'Proposal got enough votes, propose before terminating')
-
         // Transfer votes from the crowd proposal to the governance proposal
         if (isReadyToVote()) {
             vote();
@@ -72,8 +74,6 @@ contract CrowdProposal {
         IComp(comp).transfer(author, IComp(comp).balanceOf(address(this)));
 
         emit CrowdProposalTerminated(address(this), author);
-
-        selfdestruct(author);
     }
 
     /// @notice Proposal delegates votes for staked COMP to itself
