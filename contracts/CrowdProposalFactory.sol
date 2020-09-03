@@ -11,18 +11,17 @@ contract CrowdProposalFactory {
     address public immutable comp;
     /// @notice Compound protocol `GovernorAlpha` contract address
     address public immutable governor;
-    /// @notice Minimum Comp tokens required to create an autonomous proposal
+    /// @notice Minimum Comp tokens required to create a crowd proposal
     uint public immutable compProposalThreshold;
 
-    /// @notice An event emitted when a new autonomous proposal is created
+    /// @notice An event emitted when a crowd proposal is created
     event CrowdProposalCreated(address indexed proposal, address indexed author, address[] targets, uint[] values, string[] signatures, bytes[] calldatas, string description);
 
      /**
-     * @notice Construct a proposal factory for creating new Compound autonomous proposals
-     * @dev Draft mode
+     * @notice Construct a proposal factory for crowd proposals
      * @param comp_ `COMP` token contract address
      * @param governor_ Compound protocol `GovernorAlpha` contract address
-     * @param compProposalThreshold_ The minimum amount of Comp tokes required for creation of new proposal
+     * @param compProposalThreshold_ The minimum amount of Comp tokes required for creation of a crowd proposal
      */
     constructor(address comp_,
                 address governor_,
@@ -32,8 +31,15 @@ contract CrowdProposalFactory {
         compProposalThreshold = compProposalThreshold_;
     }
 
-    /// @notice create a new CAP - Compound Autonomous Proposal
-    /// @dev call `Comp.approve(factory_address, compProposalThreshold)` before calling this method
+    /**
+    * @notice Create a new crowd proposal
+    * @notice Call `Comp.approve(factory_address, compProposalThreshold)` before calling this method
+    * @param targets The ordered list of target addresses for calls to be made
+    * @param values The ordered list of values (i.e. msg.value) to be passed to the calls to be made
+    * @param signatures The ordered list of function signatures to be called
+    * @param calldatas The ordered list of calldata to be passed to each call
+    * @param description The block at which voting begins: holders must delegate their votes prior to this block
+    */
     function createCrowdProposal(address[] memory targets,
                                  uint[] memory values,
                                  string[] memory signatures,

@@ -6,29 +6,45 @@ pragma experimental ABIEncoderV2;
 import './ICompound.sol';
 
 contract CrowdProposal {
+    /// @notice The crowd proposal author
     address payable public immutable author;
+    /// @notice The minimum number of required COMP tokens for creating crowd proposal
+    uint public immutable compProposalThreshold;
 
-    // Proposal data
+    /// @notice Governance proposal data
     address[] public targets;
     uint[] public values;
     string[] public signatures;
     bytes[] public calldatas;
     string public description;
 
-    // Compound smart contracts
+    /// @notice `COMP` token contract address
     address public immutable comp;
+    /// @notice Compound protocol `GovernorAlpha` contract address
     address public immutable governor;
 
-    uint public immutable compProposalThreshold;
-
-    // Governance proposal id
+    /// @notice Governance proposal id
     uint public govProposalId;
+    /// @notice Vote flag
     bool public voted;
 
-    /// @notice An event emitted when an autonomous proposal is launched
+    /// @notice An event emitted when the governance proposal is created
     event CrowdProposalProposed(address indexed proposal, address indexed author, uint proposalId);
+    /// @notice An event emitted when the crowd proposal is terminated
     event CrowdProposalTerminated(address indexed proposal, address indexed author);
 
+    /**
+    * @notice Construct crowd proposal
+    * @param author_ The crowd proposal author
+    * @param compProposalThreshold_ The minimum number of required COMP tokens for creating crowd proposal
+    * @param targets_ The ordered list of target addresses for calls to be made
+    * @param values_ The ordered list of values (i.e. msg.value) to be passed to the calls to be made
+    * @param signatures_ The ordered list of function signatures to be called
+    * @param calldatas_ The ordered list of calldata to be passed to each call
+    * @param description_ The block at which voting begins: holders must delegate their votes prior to this block
+    * @param comp_ `COMP` token contract address
+    * @param governor_ Compound protocol `GovernorAlpha` contract address
+    */
     constructor(address payable author_,
                 uint compProposalThreshold_,
                 address[] memory targets_,
@@ -48,20 +64,24 @@ contract CrowdProposal {
         calldatas = calldatas_;
         description = description_;
 
+        // Save Compound contracts data
         comp = comp_;
         governor = governor_;
     }
 
+    /// @notice Create governance proposal
     function propose() external returns (uint) {
         require(IComp(comp).balanceOf(address(this)) >= compProposalThreshold, 'Not enough staked COMP');
         require(isReadyToPropose(), 'Not enough delegations or was already proposed');
 
+        // Create governance proposal and save proposal id
         govProposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
         emit CrowdProposalProposed(address(this), author, govProposalId);
 
         return govProposalId;
     }
 
+    /// @notice Terminate the crowd proposal, send back staked COMP tokens
     function terminate() external {
         require(msg.sender == author, 'Only author can terminate proposal');
 
@@ -76,22 +96,25 @@ contract CrowdProposal {
         emit CrowdProposalTerminated(address(this), author);
     }
 
-    /// @notice Proposal delegates votes for staked COMP to itself
+    /// @notice Delegate votes for the staked COMP to the crowd proposal
     function selfDelegate() external {
         IComp(comp).delegate(address(this));
     }
 
+    /// @notice Vote for the governance proposal with all delegated votes
     function vote() public {
         require(isReadyToVote(), 'No active gov proposal or was already voted');
         IGovernorAlpha(governor).castVote(govProposalId, true);
         voted = true;
     }
 
+    /// @notice Check if governance proposal is ready to be created
     function isReadyToPropose() public view returns (bool) {
         return govProposalId == 0 &&
             IComp(comp).getCurrentVotes(address(this)) >= IGovernorAlpha(governor).proposalThreshold();
     }
 
+    /// @notice Check if it's time to transfer votes to the governance proposal
     function isReadyToVote() public view returns (bool) {
         return !voted && govProposalId > 0 &&
             IGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active;
