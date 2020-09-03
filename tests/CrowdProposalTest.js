@@ -4,8 +4,6 @@ const path = require('path');
 const solparse = require('solparse');
 
 const governorAlphaPath = path.join(__dirname, './', 'contracts', 'GovernorAlpha.sol');
-console.log("governor alpha path = ", governorAlphaPath);
-
 
 const statesInverted = solparse
   .parseFile(governorAlphaPath)
@@ -57,7 +55,7 @@ describe('CrowdProposal', () => {
       });
 
       it('has votesTransfered set to false', async () => {
-        expect(await call(proposal, 'votesTransfered')).toEqual(false);
+        expect(await call(proposal, 'voted')).toEqual(false);
       });
 
       it('has given author', async () => {
@@ -152,7 +150,86 @@ describe('CrowdProposal', () => {
 
         expect(await call(proposal, 'govProposalId')).toEqual('0');
       })
-    })
+    });
+
+    describe('terminate', () => {
+      it('should terminate after gov proposal was created', async() => {
+        // Delegate all votes to proposal
+        await send(comp, 'delegate', [proposal._address], {from: root});
+
+        // Propose
+        await send(proposal, 'propose', {from: root});
+        const govProposalId = await call(proposal, 'govProposalId');
+
+        await sendRPC(web3, "evm_mine", []);
+
+        // Terminate crowdsale proposal
+        const trx  = await send(proposal, 'terminate', {from: author});
+        const terminateEvent = trx.events['CrowdProposalTerminated'];
+        expect(terminateEvent.returnValues.author).toEqual(author);
+        expect(terminateEvent.returnValues.proposal).toEqual(proposal._address);
+
+        // Staked COMP is transfered back to author
+        expect(await call(comp, 'balanceOf', [author])).toEqual(minCompThreshold.toString());
+
+        // Check state and governance proposal votes
+        expect(await call(gov, 'state', [govProposalId])).toEqual(states["Active"]);
+        const proposalData = await call(gov, 'proposals', [govProposalId]);
+        expect(proposalData.againstVotes).toBe('0');
+        expect(proposalData.forVotes).toBe(await call(comp, 'totalSupply'));
+      })
+
+      // TODO discuss if this is OK?
+      it('should terminate without transfering votes!!!', async() => {
+        // Delegate all votes to proposal
+        await send(comp, 'delegate', [proposal._address], {from: root});
+
+        // Propose
+        await send(proposal, 'propose', {from: root});
+        const govProposalId = await call(proposal, 'govProposalId');
+
+        // Terminate crowdsale proposal
+        await send(proposal, 'terminate', {from: author});
+
+        // Staked COMP is transfered back to author
+        expect(await call(comp, 'balanceOf', [author])).toEqual(minCompThreshold.toString());
+
+        // Check state and governance proposal votes
+        expect(await call(gov, 'state', [govProposalId])).toEqual(states["Pending"]);
+        const proposalData = await call(gov, 'proposals', [govProposalId]);
+        expect(proposalData.againstVotes).toBe('0');
+        expect(proposalData.forVotes).toBe('0');
+      })
+
+      it('should terminate without proposing, not enough votes were delegated', async() => {
+        expect(await call(proposal, 'govProposalId')).toEqual('0');
+        // Terminate crowdsale proposal
+        await send(proposal, 'terminate', {from: author});
+
+        // Staked COMP is transfered back to author
+        expect(await call(comp, 'balanceOf', [author])).toEqual(minCompThreshold.toString());
+      })
+
+      // TODO discuss if this is OK?
+      it('should terminate without proposing, even with enough delegated votes', async() => {
+        // Delegate all votes to proposal
+        await send(comp, 'delegate', [proposal._address], {from: root});
+
+        expect(await call(proposal, 'govProposalId')).toEqual('0');
+        // Terminate crowdsale proposal
+        await send(proposal, 'terminate', {from: author});
+
+        // Staked COMP is transfered back to author
+        expect(await call(comp, 'balanceOf', [author])).toEqual(minCompThreshold.toString());
+      })
+
+      it('should revert if called not by author', async() => {
+        // Terminate reverts
+        await expect(send(proposal, 'terminate', {from: root}))
+        .rejects.toRevert("revert Only author can terminate proposal");
+      })
+
+    });
 
     describe('full workflows', () => {
       it('CrowdProposal is successful', async () => {
@@ -221,5 +298,5 @@ describe('CrowdProposal', () => {
         // Staked COMP is transfered back to author
         expect(await call(comp, 'balanceOf', [author])).toEqual(minCompThreshold.toString());
       });
-    })
+    });
 })
