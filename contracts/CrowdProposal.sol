@@ -86,10 +86,10 @@ contract CrowdProposal {
         require(msg.sender == author, 'CrowdProposal::terminate: only author can terminate');
         require(!terminated, 'CrowdProposal::terminate: proposal has been already terminated');
 
+        terminated = true;
+
         // Transfer staked COMP tokens from the crowd proposal contract back to the author
         IComp(comp).transfer(author, IComp(comp).balanceOf(address(this)));
-
-        terminated = true;
 
         emit CrowdProposalTerminated(address(this), author);
     }
