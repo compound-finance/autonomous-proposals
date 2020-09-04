@@ -30,8 +30,8 @@ contract CrowdProposal {
     event CrowdProposalProposed(address indexed proposal, address indexed author, uint proposalId);
     /// @notice An event emitted when the crowd proposal is terminated
     event CrowdProposalTerminated(address indexed proposal, address indexed author);
-     /// @notice An event emitted when all delegated votes are transfered to the governance proposal
-    event CrowdProposalVoted(address indexed proposal, uint indexed govProposalId);
+     /// @notice An event emitted when delegated votes are transfered to the governance proposal
+    event CrowdProposalVoted(address indexed proposal, uint proposalId);
 
     /**
     * @notice Construct crowd proposal
@@ -64,6 +64,8 @@ contract CrowdProposal {
         // Save Compound contracts data
         comp = comp_;
         governor = governor_;
+
+        terminated = false;
 
         // Delegate votes to author
         IComp(comp_).delegate(author_);
@@ -105,6 +107,8 @@ contract CrowdProposal {
     /// @notice Delegate votes for the staked COMP to the crowd proposal
     function selfDelegate() external {
         require(msg.sender == author, 'CrowdProposal::selfDelegate: only author can delegate staked COMP votes');
+        require(!terminated, 'CrowdProposal::selfDelegate: proposal has been terminated');
+
         IComp(comp).delegate(address(this));
     }
 }

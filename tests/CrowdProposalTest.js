@@ -255,8 +255,12 @@ describe('CrowdProposal', () => {
 
         await sendRPC(web3, "evm_mine", []);
 
-         // Vote and check number of votes
-        await send(proposal, 'vote', {from: root});
+         // Vote, check event and number of votes
+        const trx = await send(proposal, 'vote', {from: root});
+        const voteEvent = trx.events['CrowdProposalVoted'];
+        expect(voteEvent.returnValues.proposalId).toEqual(govProposalId);
+        expect(voteEvent.returnValues.proposal).toEqual(proposal._address);
+
         const proposalData = await call(gov, 'proposals', [govProposalId]);
         expect(proposalData.againstVotes).toBe('0');
         expect(proposalData.forVotes).toBe(await call(comp, 'totalSupply'));
@@ -347,6 +351,12 @@ describe('CrowdProposal', () => {
       it('should revert if self-delegated not by author', async() => {
          await expect(send(newProposal, 'selfDelegate', {from: root}))
           .rejects.toRevert("revert CrowdProposal::selfDelegate: only author can delegate staked COMP votes");
+      })
+
+      it('should revert if proposal has been terminated', async() => {
+        await send(newProposal, 'terminate', {from: author});
+        await expect(send(newProposal, 'selfDelegate', {from: author}))
+         .rejects.toRevert("revert CrowdProposal::selfDelegate: proposal has been terminated");
       })
     });
 
