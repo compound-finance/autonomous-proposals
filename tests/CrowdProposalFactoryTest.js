@@ -23,7 +23,7 @@ describe('CrowdProposalFactory', () => {
       });
 
       it('has given min comp threshold', async () => {
-        expect(await call(factory, 'compProposalThreshold')).toEqual("100000000000000000000");
+        expect(await call(factory, 'compStakeAmount')).toEqual("100000000000000000000");
       });
     });
 
