@@ -45,13 +45,10 @@ contract CrowdProposalFactory {
                                  string[] memory signatures,
                                  bytes[] memory calldatas,
                                  string memory description) external {
-        require(IComp(comp).balanceOf(msg.sender) >= compProposalThreshold, 'Min Comp balance requirement is not met');
-
         CrowdProposal proposal = new CrowdProposal(msg.sender, compProposalThreshold, targets, values, signatures, calldatas, description, comp, governor);
         emit CrowdProposalCreated(address(proposal), msg.sender, targets, values, signatures, calldatas, description);
 
         // Stake COMP and force proposal to delegate votes to itself
         IComp(comp).transferFrom(msg.sender, address(proposal), compProposalThreshold);
-        proposal.selfDelegate();
     }
 }

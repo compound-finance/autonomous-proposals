@@ -114,7 +114,7 @@ describe('CrowdProposal', () => {
         const govProposalId = proposalEvent.returnValues.proposalId;
         expect(await call(proposal, 'govProposalId')).toEqual(govProposalId);
 
-        // Check state of government proposal
+        // Check state of governance proposal
         const proposalData = await call(gov, 'proposals', [govProposalId]);
         expect(proposalData.againstVotes).toBe('0');
         expect(proposalData.forVotes).toBe('0');
@@ -249,7 +249,7 @@ describe('CrowdProposal', () => {
 
         await sendRPC(web3, "evm_mine", []);
 
-        // Government proposal has not been voted for yet
+        // Governance proposal has not been voted for yet
         expect(await call(proposal, 'voted')).toEqual(false);
 
          // Vote and check number of votes and voted flag
@@ -268,7 +268,7 @@ describe('CrowdProposal', () => {
 
         await send(proposal, 'terminate', {from: author});
 
-        // Government proposal has not been voted for yet
+        // Governance proposal has not been voted for yet
         expect(await call(proposal, 'voted')).toEqual(false);
 
         // Vote and check number of votes and voted flag

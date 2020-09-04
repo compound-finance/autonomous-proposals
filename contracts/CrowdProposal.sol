@@ -25,13 +25,13 @@ contract CrowdProposal {
 
     /// @notice Governance proposal id
     uint public govProposalId;
-    /// @notice Vote flag
-    bool public voted;
 
     /// @notice An event emitted when the governance proposal is created
     event CrowdProposalProposed(address indexed proposal, address indexed author, uint proposalId);
     /// @notice An event emitted when the crowd proposal is terminated
     event CrowdProposalTerminated(address indexed proposal, address indexed author);
+     /// @notice An event emitted when all delegated votes are transfered to the governance proposal
+    event CrowdProposalVoted(address indexed proposal, uint indexed govProposalId);
 
     /**
     * @notice Construct crowd proposal
@@ -67,12 +67,18 @@ contract CrowdProposal {
         // Save Compound contracts data
         comp = comp_;
         governor = governor_;
+
+        // Delegate votes to author
+        IComp(comp_).delegate(author_);
     }
 
     /// @notice Create governance proposal
     function propose() external returns (uint) {
-        require(IComp(comp).balanceOf(address(this)) >= compProposalThreshold, 'Not enough staked COMP');
-        require(isReadyToPropose(), 'Not enough delegations or was already proposed');
+        require(govProposalId == 0, 'Gov proposal has been already created');
+        require(IComp(comp).balanceOf(address(this)) >= compProposalThreshold, 'Not enough COMP staked');
+
+        // Delegate votes to itself
+        IComp(comp).delegate(address(this));
 
         // Create governance proposal and save proposal id
         govProposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
@@ -85,38 +91,17 @@ contract CrowdProposal {
     function terminate() external {
         require(msg.sender == author, 'Only author can terminate proposal');
 
-        // Transfer votes from the crowd proposal to the governance proposal
-        if (isReadyToVote()) {
-            vote();
-        }
-
         // Transfer Comp tokens from the crowdproposal contract back to the author
         IComp(comp).transfer(author, IComp(comp).balanceOf(address(this)));
 
         emit CrowdProposalTerminated(address(this), author);
     }
 
-    /// @notice Delegate votes for the staked COMP to the crowd proposal
-    function selfDelegate() external {
-        IComp(comp).delegate(address(this));
-    }
-
     /// @notice Vote for the governance proposal with all delegated votes
-    function vote() public {
-        require(isReadyToVote(), 'No active gov proposal or was already voted');
+    function vote() external {
+        require(govProposalId > 0, 'No active gov proposal');
         IGovernorAlpha(governor).castVote(govProposalId, true);
-        voted = true;
-    }
 
-    /// @notice Check if governance proposal is ready to be created
-    function isReadyToPropose() public view returns (bool) {
-        return govProposalId == 0 &&
-            IComp(comp).getCurrentVotes(address(this)) >= IGovernorAlpha(governor).proposalThreshold();
-    }
-
-    /// @notice Check if it's time to transfer votes to the governance proposal
-    function isReadyToVote() public view returns (bool) {
-        return !voted && govProposalId > 0 &&
-            IGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active;
+        emit CrowdProposalVoted(address(this), govProposalId);
     }
 }
