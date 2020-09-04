@@ -86,7 +86,7 @@ describe('CrowdProposal', () => {
       it('should pass if enough votes were delegated', async() => {
         // Check start balance of votes
         expect(await call(comp, 'balanceOf', [proposal._address])).toEqual(minComp);
-        expect(await call(comp, 'getCurrentVotes', [author])).toEqual(minComp);
+        expect(await call(comp, 'getCurrentVotes', [proposal._address])).toEqual(minComp);
 
         // Check that gov proposal has not beem proposed yet
         expect(await call(proposal, 'govProposalId')).toEqual('0');
@@ -152,9 +152,6 @@ describe('CrowdProposal', () => {
       it('should terminate after gov proposal was created', async() => {
         // Delegate all votes to proposal
         await send(comp, 'delegate', [proposal._address], {from: root});
-
-        // Author delegates votes back to the proposal
-        await send(proposal, 'selfDelegate', {from: author});
 
         // Propose
         await send(proposal, 'propose', {from: root});
@@ -249,7 +246,6 @@ describe('CrowdProposal', () => {
       it('should successfully vote for proposal', async() => {
         // Propose
         await send(comp, 'delegate', [proposal._address], {from: root});
-        await send(proposal, 'selfDelegate', {from: author});
         await send(proposal, 'propose', {from: root});
         const govProposalId = await call(proposal, 'govProposalId');
 
@@ -319,53 +315,12 @@ describe('CrowdProposal', () => {
       })
     });
 
-    describe('selfDelegate', () => {
-      let newProposal;
-      beforeEach(async () => {
-        newProposal = await deploy('CrowdProposal', [author, targets, values, signatures, callDatas, description, comp._address, gov._address]);
-        // Stake COMP
-        await send(comp, 'transfer', [newProposal._address, uint(minCompThreshold)], { from: root });
-      })
-
-      it('successfully delegate votes to itself', async () => {
-        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe('0');
-
-        await send(newProposal, 'selfDelegate', {from: author});
-
-        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
-      })
-
-      it('self delegating multiple times', async () => {
-        // First self-delegation
-        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe('0');
-        await send(newProposal, 'selfDelegate', {from: author});
-        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
-
-        // No effect of following self-delegations
-        await send(newProposal, 'selfDelegate', {from: author});
-        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
-        await send(newProposal, 'selfDelegate', {from: author});
-        expect(await call(comp, 'getCurrentVotes', [newProposal._address])).toBe(minComp);
-      })
-
-      it('should revert if self-delegated not by author', async() => {
-         await expect(send(newProposal, 'selfDelegate', {from: root}))
-          .rejects.toRevert("revert CrowdProposal::selfDelegate: only author can delegate staked COMP votes");
-      })
-
-      it('should revert if proposal has been terminated', async() => {
-        await send(newProposal, 'terminate', {from: author});
-        await expect(send(newProposal, 'selfDelegate', {from: author}))
-         .rejects.toRevert("revert CrowdProposal::selfDelegate: proposal has been terminated");
-      })
-    });
-
     describe('full workflows', () => {
       it('CrowdProposal is successful', async () => {
         // Delegate more votes to the proposal
         const compWhale = accounts[1];
         const proposalThreshold = await call(gov, 'proposalThreshold');
-        const currentVotes = await call(comp, 'getCurrentVotes', [author]);
+        const currentVotes = await call(comp, 'getCurrentVotes', [proposal._address]);
         const quorum = new BigNumber(proposalThreshold).plus(1);
         const remainingVotes = quorum.minus(new BigNumber(currentVotes));
 
@@ -374,8 +329,7 @@ describe('CrowdProposal', () => {
         // Whale delegates just enough to push proposal through
         await send(comp, 'delegate', [proposal._address], {from: compWhale});
 
-        // Author need to delegate votes back to proposal to meet threshold requirement
-        await send(proposal, 'selfDelegate', {from: author});
+        // Proposal meets threshold requirement
         expect(await call(comp, 'getCurrentVotes', [proposal._address])).toEqual(quorum.toFixed());
 
         // Launch governance proposal

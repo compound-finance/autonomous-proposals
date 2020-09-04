@@ -53,7 +53,7 @@ describe('CrowdProposalFactory', () => {
           const newProposal = proposalEvent.returnValues.proposal;
           expect(await call(comp, 'balanceOf', [newProposal])).toEqual(minCompThreshold.toString());
           expect(await call(comp, 'balanceOf', [author])).toEqual("0");
-          expect(await call(comp, 'getCurrentVotes', [author])).toEqual(minCompThreshold.toString());
+          expect(await call(comp, 'getCurrentVotes', [newProposal])).toEqual(minCompThreshold.toString());
         });
 
         it('revert if author does not have enough Comp', async () => {

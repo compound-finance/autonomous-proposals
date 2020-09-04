@@ -67,8 +67,8 @@ contract CrowdProposal {
 
         terminated = false;
 
-        // Delegate votes to author
-        IComp(comp_).delegate(author_);
+        // Delegate votes to the crowd proposal
+        IComp(comp_).delegate(address(this));
     }
 
     /// @notice Create governance proposal
@@ -102,13 +102,5 @@ contract CrowdProposal {
         IGovernorAlpha(governor).castVote(govProposalId, true);
 
         emit CrowdProposalVoted(address(this), govProposalId);
-    }
-
-    /// @notice Delegate votes for the staked COMP to the crowd proposal
-    function selfDelegate() external {
-        require(msg.sender == author, 'CrowdProposal::selfDelegate: only author can delegate staked COMP votes');
-        require(!terminated, 'CrowdProposal::selfDelegate: proposal has been terminated');
-
-        IComp(comp).delegate(address(this));
     }
 }
