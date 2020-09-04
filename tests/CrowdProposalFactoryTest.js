@@ -23,7 +23,7 @@ describe('CrowdProposalFactory', () => {
       });
 
       it('has given min comp threshold', async () => {
-        expect(await call(factory, 'compProposalThreshold')).toEqual("100000000000000000000");
+        expect(await call(factory, 'compStakeAmount')).toEqual("100000000000000000000");
       });
     });
 
@@ -57,7 +57,7 @@ describe('CrowdProposalFactory', () => {
         });
 
         it('revert if author does not have enough Comp', async () => {
-          let author = accounts[1];
+          let author = accounts[0];
 
           // Fund author account
           const compBalance = 99e18;
@@ -75,7 +75,7 @@ describe('CrowdProposalFactory', () => {
           const description = "do nothing";
 
           await expect(send(factory, 'createCrowdProposal', [targets, values, signatures, callDatas, description], {from: author}))
-          .rejects.toRevert("revert Min Comp balance requirement is not met");
+          .rejects.toRevert("revert Comp::transferFrom: transfer amount exceeds spender allowance");
         });
     });
 })

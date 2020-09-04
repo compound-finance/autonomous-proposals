@@ -8,8 +8,6 @@ import './ICompound.sol';
 contract CrowdProposal {
     /// @notice The crowd proposal author
     address payable public immutable author;
-    /// @notice The minimum number of required COMP tokens for creating crowd proposal
-    uint public immutable compProposalThreshold;
 
     /// @notice Governance proposal data
     address[] public targets;
@@ -18,25 +16,26 @@ contract CrowdProposal {
     bytes[] public calldatas;
     string public description;
 
-    /// @notice `COMP` token contract address
+    /// @notice COMP token contract address
     address public immutable comp;
     /// @notice Compound protocol `GovernorAlpha` contract address
     address public immutable governor;
 
     /// @notice Governance proposal id
     uint public govProposalId;
-    /// @notice Vote flag
-    bool public voted;
+    /// @notice Terminate flag
+    bool public terminated;
 
     /// @notice An event emitted when the governance proposal is created
     event CrowdProposalProposed(address indexed proposal, address indexed author, uint proposalId);
     /// @notice An event emitted when the crowd proposal is terminated
     event CrowdProposalTerminated(address indexed proposal, address indexed author);
+     /// @notice An event emitted when delegated votes are transfered to the governance proposal
+    event CrowdProposalVoted(address indexed proposal, uint proposalId);
 
     /**
     * @notice Construct crowd proposal
     * @param author_ The crowd proposal author
-    * @param compProposalThreshold_ The minimum number of required COMP tokens for creating crowd proposal
     * @param targets_ The ordered list of target addresses for calls to be made
     * @param values_ The ordered list of values (i.e. msg.value) to be passed to the calls to be made
     * @param signatures_ The ordered list of function signatures to be called
@@ -46,7 +45,6 @@ contract CrowdProposal {
     * @param governor_ Compound protocol `GovernorAlpha` contract address
     */
     constructor(address payable author_,
-                uint compProposalThreshold_,
                 address[] memory targets_,
                 uint[] memory values_,
                 string[] memory signatures_,
@@ -55,7 +53,6 @@ contract CrowdProposal {
                 address comp_,
                 address governor_) public {
         author = author_;
-        compProposalThreshold = compProposalThreshold_;
 
         // Save proposal data
         targets = targets_;
@@ -67,12 +64,17 @@ contract CrowdProposal {
         // Save Compound contracts data
         comp = comp_;
         governor = governor_;
+
+        terminated = false;
+
+        // Delegate votes to the crowd proposal
+        IComp(comp_).delegate(address(this));
     }
 
     /// @notice Create governance proposal
     function propose() external returns (uint) {
-        require(IComp(comp).balanceOf(address(this)) >= compProposalThreshold, 'Not enough staked COMP');
-        require(isReadyToPropose(), 'Not enough delegations or was already proposed');
+        require(govProposalId == 0, 'CrowdProposal::propose: gov proposal already exists');
+        require(!terminated, 'CrowdProposal::propose: proposal has been terminated');
 
         // Create governance proposal and save proposal id
         govProposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
@@ -83,40 +85,22 @@ contract CrowdProposal {
 
     /// @notice Terminate the crowd proposal, send back staked COMP tokens
     function terminate() external {
-        require(msg.sender == author, 'Only author can terminate proposal');
+        require(msg.sender == author, 'CrowdProposal::terminate: only author can terminate');
+        require(!terminated, 'CrowdProposal::terminate: proposal has been already terminated');
 
-        // Transfer votes from the crowd proposal to the governance proposal
-        if (isReadyToVote()) {
-            vote();
-        }
+        terminated = true;
 
-        // Transfer Comp tokens from the crowdproposal contract back to the author
+        // Transfer staked COMP tokens from the crowd proposal contract back to the author
         IComp(comp).transfer(author, IComp(comp).balanceOf(address(this)));
 
         emit CrowdProposalTerminated(address(this), author);
     }
 
-    /// @notice Delegate votes for the staked COMP to the crowd proposal
-    function selfDelegate() external {
-        IComp(comp).delegate(address(this));
-    }
-
     /// @notice Vote for the governance proposal with all delegated votes
-    function vote() public {
-        require(isReadyToVote(), 'No active gov proposal or was already voted');
+    function vote() external {
+        require(govProposalId > 0, 'CrowdProposal::vote: gov proposal has not been created yet');
         IGovernorAlpha(governor).castVote(govProposalId, true);
-        voted = true;
-    }
 
-    /// @notice Check if governance proposal is ready to be created
-    function isReadyToPropose() public view returns (bool) {
-        return govProposalId == 0 &&
-            IComp(comp).getCurrentVotes(address(this)) >= IGovernorAlpha(governor).proposalThreshold();
-    }
-
-    /// @notice Check if it's time to transfer votes to the governance proposal
-    function isReadyToVote() public view returns (bool) {
-        return !voted && govProposalId > 0 &&
-            IGovernorAlpha(governor).state(govProposalId) == IGovernorAlpha.ProposalState.Active;
+        emit CrowdProposalVoted(address(this), govProposalId);
     }
 }

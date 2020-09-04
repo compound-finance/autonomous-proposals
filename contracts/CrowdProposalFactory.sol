@@ -12,7 +12,7 @@ contract CrowdProposalFactory {
     /// @notice Compound protocol `GovernorAlpha` contract address
     address public immutable governor;
     /// @notice Minimum Comp tokens required to create a crowd proposal
-    uint public immutable compProposalThreshold;
+    uint public immutable compStakeAmount;
 
     /// @notice An event emitted when a crowd proposal is created
     event CrowdProposalCreated(address indexed proposal, address indexed author, address[] targets, uint[] values, string[] signatures, bytes[] calldatas, string description);
@@ -21,19 +21,19 @@ contract CrowdProposalFactory {
      * @notice Construct a proposal factory for crowd proposals
      * @param comp_ `COMP` token contract address
      * @param governor_ Compound protocol `GovernorAlpha` contract address
-     * @param compProposalThreshold_ The minimum amount of Comp tokes required for creation of a crowd proposal
+     * @param compStakeAmount_ The minimum amount of Comp tokes required for creation of a crowd proposal
      */
     constructor(address comp_,
                 address governor_,
-                uint compProposalThreshold_) public {
+                uint compStakeAmount_) public {
         comp = comp_;
         governor = governor_;
-        compProposalThreshold = compProposalThreshold_;
+        compStakeAmount = compStakeAmount_;
     }
 
     /**
     * @notice Create a new crowd proposal
-    * @notice Call `Comp.approve(factory_address, compProposalThreshold)` before calling this method
+    * @notice Call `Comp.approve(factory_address, compStakeAmount)` before calling this method
     * @param targets The ordered list of target addresses for calls to be made
     * @param values The ordered list of values (i.e. msg.value) to be passed to the calls to be made
     * @param signatures The ordered list of function signatures to be called
@@ -45,13 +45,10 @@ contract CrowdProposalFactory {
                                  string[] memory signatures,
                                  bytes[] memory calldatas,
                                  string memory description) external {
-        require(IComp(comp).balanceOf(msg.sender) >= compProposalThreshold, 'Min Comp balance requirement is not met');
-
-        CrowdProposal proposal = new CrowdProposal(msg.sender, compProposalThreshold, targets, values, signatures, calldatas, description, comp, governor);
+        CrowdProposal proposal = new CrowdProposal(msg.sender, targets, values, signatures, calldatas, description, comp, governor);
         emit CrowdProposalCreated(address(proposal), msg.sender, targets, values, signatures, calldatas, description);
 
         // Stake COMP and force proposal to delegate votes to itself
-        IComp(comp).transferFrom(msg.sender, address(proposal), compProposalThreshold);
-        proposal.selfDelegate();
+        IComp(comp).transferFrom(msg.sender, address(proposal), compStakeAmount);
     }
 }
