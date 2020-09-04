@@ -1,7 +1,7 @@
 {
   "name": "autonomous-proposals",
   "version": "1.0.0",
-  "description": "Compound governance improvements - Compound Hack Day Submission",
+  "description": "Compound Crowd Proposals",
   "main": "index.js",
   "repository": "git@github.com:compound-finance/autonomous-proposals.git",
   "author": "Compound Labs, Inc.",
