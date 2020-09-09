@@ -1,5 +1,5 @@
-Autonomous Proposals v1.0
-=========================
+Autonomous Proposals
+====================
 Compound Autonomous Proposals allow anyone with 100 COMP to create/deploy a smart contract with proposal-code (title, description, governance actions) and gather support (via the public delegating to the autonomous proposal contract).
 
 Their 100 COMP are locked into the autonomous proposal, and act as the first 100 votes.
@@ -13,7 +13,7 @@ After the successful proposal execution or if the autonomous proposal sponsor do
 Contracts
 =========
 
-We detail a few of the core contracts in the Autonomous Proposal.
+We detail a few of the core contracts in the Autonomous Proposals v1.0:
 
 <dl>
   <dt>CrowdProposalFactory</dt>
