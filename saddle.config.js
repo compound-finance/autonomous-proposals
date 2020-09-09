@@ -133,18 +133,17 @@ module.exports = {
     },
     mainnet: {
       providers: [
-        { env: "PROVIDER" },
-        { file: "~/.ethereum/rinkeby-url" },              // Load from given file with contents as the URL (e.g. https://infura.io/api-key)
-        { http: "https://rinkeby.infura.io" }
+        {env: "PROVIDER"},
+        {file: "~/.ethereum/mainnet-url"},                    // Load from given file with contents as the URL (e.g. https://infura.io/api-key)
       ],
       web3: {
         gas: [
           { env: "GAS" },
-          { default: "4600000" }
+          { default: "2011059" }
         ],
         gas_price: [
           { env: "GAS_PRICE" },
-          { default: "6000000000" }
+          { default: "95000000000" }
         ],
         options: {
           transactionConfirmationBlocks: 1,
