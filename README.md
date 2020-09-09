@@ -1,14 +1,14 @@
 Autonomous Proposals
 ====================
-Compound Autonomous Proposals allow anyone with 100 COMP to create/deploy a smart contract with proposal-code (title, description, governance actions) and gather support (via the public delegating to the autonomous proposal contract).
+Compound Autonomous Proposals allow anyone with enough COMP stake (currently 100; subject to change) to create an autonomous proposal and gather public support by receiving delegations to the autonomous proposal contract.
 
-Their 100 COMP are locked into the autonomous proposal, and act as the first 100 votes.
+The staked COMP tokens are locked into the autonomous proposal contract, and act as the first 100 votes for the future governance proposal.
 
-Once the autonomous proposal reaches the Compound governance proposal threshold (currently 100k votes; subject to change), anyone can call the __propose__ method, setting it up for a public vote in the Governance system.
+Once the autonomous proposal reaches the governance proposal threshold (currently 100k votes; subject to change), anyone can call the __propose__ method, setting it up for a public vote in the Compound Governance system.
 
 One block after the proposal is created (or, longer if the delay parameter changes in the Governance system), anyone can call the __vote__ function, casting FOR votes on the proposal.
 
-After the successful proposal execution or if the autonomous proposal sponsor doesn’t feel like the proposal will succeed, they can call the __terminate__ function, returning their 100 COMP and self-destructing the autonomous proposal.
+After the successful proposal execution or if the autonomous proposal author doesn’t feel like the proposal will succeed, they can call the __terminate__ method, terminating autonomous proposal and returning their staked COMP tokens.
 
 Contracts
 =========
