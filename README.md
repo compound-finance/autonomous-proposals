@@ -38,6 +38,12 @@ Testing
 Jest contract tests are defined under the [tests directory](https://github.com/compound-finance/autonomous-proposals/tree/master/tests). To run the tests run:
 
     yarn test
+    
+Deployment
+-------
+To deploy autonomous proposal factory:
+
+``` npx saddle deploy CrowdProposalFactory "COMP_address" "Governor_address" "100000000000000000000" --network ropsten ```
 
 
 Discussion
