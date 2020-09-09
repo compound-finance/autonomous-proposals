@@ -4,11 +4,11 @@ Compound Autonomous Proposals allow anyone with 100 COMP to create/deploy a smar
 
 Their 100 COMP are locked into the autonomous proposal, and act as the first 100 votes.
 
-Once the autonomous proposal reaches the Compound governance proposal threshold (currently 100k votes; subject to change), anyone can call the “launch proposal” function, setting it up for a public vote in the Governance system.
+Once the autonomous proposal reaches the Compound governance proposal threshold (currently 100k votes; subject to change), anyone can call the __propose__ method, setting it up for a public vote in the Governance system.
 
-One block after the proposal is created (or, longer if the delay parameter changes in the Governance system), anyone can call the “vote” function, casting FOR votes on the proposal.
+One block after the proposal is created (or, longer if the delay parameter changes in the Governance system), anyone can call the __vote__ function, casting FOR votes on the proposal.
 
-After the successful proposal execution or if the autonomous proposal sponsor doesn’t feel like the proposal will succeed, they can call the “terminate proposal” function, returning their 100 COMP and self-destructing the autonomous proposal.
+After the successful proposal execution or if the autonomous proposal sponsor doesn’t feel like the proposal will succeed, they can call the __terminate__ function, returning their 100 COMP and self-destructing the autonomous proposal.
 
 Contracts
 =========
@@ -17,12 +17,12 @@ We detail a few of the core contracts in the Autonomous Proposal.
 
 <dl>
   <dt>CrowdProposalFactory</dt>
-  <dd>The proposal factory contract, which creates autonomous proposals and transfer intitial staked COMP tokens to them.</dd>
+  <dd>The proposal factory contract, which creates autonomous proposals and transfer intitial staked COMP tokens to them with <strong>createCrowdProposal</strong> method.</dd>
 </dl>
 
 <dl>
   <dt>CrowdProposal</dt>
-  <dd>The Autonomous Proposal contract that contains `propose`, `vote` and `terminate` methods.</dd>
+  <dd>The Autonomous Proposal contract that contains <strong>propose</strong>, <strong>vote</strong> and <strong>terminate</strong> methods.</dd>
 </dl>
 
 Installation
