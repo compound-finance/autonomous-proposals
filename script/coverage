@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -eo pipefail
+
+dir=`dirname $0`
+coverage_root="$dir/../coverage"
+
+echo "Compiling contracts with trace..."
+npx saddle compile --trace
+
+rm -rf "$coverage_root"
+
+npx saddle coverage $@
+coverage_code=$?
+
+npx istanbul report --root="$coverage_root" lcov json
+
+echo "Coverage generated. Report at $(cd $coverage_root && pwd)/lcov-report/index.html"
+
+exit $coverage_code
+
