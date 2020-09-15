@@ -1,7 +1,7 @@
 {
   "name": "autonomous-proposals",
   "version": "1.0.0",
-  "description": "Compound Crowd Proposals",
+  "description": "Compound Autonomous Proposals",
   "main": "index.js",
   "repository": "git@github.com:compound-finance/autonomous-proposals.git",
   "author": "Compound Labs, Inc.",
@@ -13,7 +13,9 @@
     "web3": "^1.2.11"
   },
   "scripts": {
-    "test": "./script/test",
+    "coverage": "script/coverage",
+    "lint": "script/lint",
+    "test": "script/test",
     "console": "npx -n --experimental-repl-await saddle console",
     "compile": "npx saddle compile",
     "deploy": "npx saddle deploy"
@@ -22,5 +24,8 @@
     "**/ganache-core": "https://github.com/compound-finance/ganache-core.git#compound",
     "scrypt.js": "https://registry.npmjs.org/@compound-finance/ethereumjs-wallet/-/ethereumjs-wallet-0.6.3.tgz",
     "**/sha3": "^2.1.2"
+  },
+  "devDependencies": {
+    "solium": "^1.2.5"
   }
 }
