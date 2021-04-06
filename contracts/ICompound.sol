@@ -10,7 +10,7 @@ interface IComp {
     function transferFrom(address src, address dst, uint rawAmount) external returns (bool);
 }
 
-interface IGovernorAlpha {
+interface IGovernorBravo {
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) external returns (uint);
-    function castVote(uint proposalId, bool support) external;
+    function castVote(uint proposalId, uint8 support) external;
 }

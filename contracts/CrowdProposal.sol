@@ -18,7 +18,7 @@ contract CrowdProposal {
 
     /// @notice COMP token contract address
     address public immutable comp;
-    /// @notice Compound protocol `GovernorAlpha` contract address
+    /// @notice Compound protocol `GovernorBravo` contract address
     address public immutable governor;
 
     /// @notice Governance proposal id
@@ -42,7 +42,7 @@ contract CrowdProposal {
     * @param calldatas_ The ordered list of calldata to be passed to each call
     * @param description_ The block at which voting begins: holders must delegate their votes prior to this block
     * @param comp_ `COMP` token contract address
-    * @param governor_ Compound protocol `GovernorAlpha` contract address
+    * @param governor_ Compound protocol `GovernorBravo` contract address
     */
     constructor(address payable author_,
                 address[] memory targets_,
@@ -77,7 +77,7 @@ contract CrowdProposal {
         require(!terminated, 'CrowdProposal::propose: proposal has been terminated');
 
         // Create governance proposal and save proposal id
-        govProposalId = IGovernorAlpha(governor).propose(targets, values, signatures, calldatas, description);
+        govProposalId = IGovernorBravo(governor).propose(targets, values, signatures, calldatas, description);
         emit CrowdProposalProposed(address(this), author, govProposalId);
 
         return govProposalId;
@@ -99,7 +99,8 @@ contract CrowdProposal {
     /// @notice Vote for the governance proposal with all delegated votes
     function vote() external {
         require(govProposalId > 0, 'CrowdProposal::vote: gov proposal has not been created yet');
-        IGovernorAlpha(governor).castVote(govProposalId, true);
+        // Support the proposal, vote value = 1
+        IGovernorBravo(governor).castVote(govProposalId, 1);
 
         emit CrowdProposalVoted(address(this), govProposalId);
     }

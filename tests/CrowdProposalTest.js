@@ -1,19 +1,16 @@
-const { uint, address, encodeParameters, sendRPC } = require('./Helpers');
+const { uint, address, encodeParameters, sendRPC, mergeInterface } = require('./Helpers');
 const BigNumber = require("bignumber.js");
-const path = require('path');
-const solparse = require('solparse');
 
-const governorAlphaPath = path.join(__dirname, './', 'contracts', 'GovernorAlpha.sol');
-
-const statesInverted = solparse
-  .parseFile(governorAlphaPath)
-  .body
-  .find(k => k.type === 'ContractStatement')
-  .body
-  .find(k => k.name == 'ProposalState')
-  .members
-
-const states = Object.entries(statesInverted).reduce((obj, [key, value]) => ({ ...obj, [value]: key }), {});
+const states =  {
+  Pending: '0',
+  Active: '1',
+  Canceled: '2',
+  Defeated: '3',
+  Succeeded: '4',
+  Queued: '5',
+  Expired: '6',
+  Executed: '7'
+};
 
 describe('CrowdProposal', () => {
     let comp, gov, root, a1, accounts;
@@ -27,7 +24,10 @@ describe('CrowdProposal', () => {
     beforeEach(async() => {
       [root, a1, ...accounts] = saddle.accounts;
       comp = await deploy('Comp', [root]);
-      gov = await deploy('GovernorAlpha', [address(0), comp._address, root]);
+      govDelegate = await deploy('GovernorBravoDelegateHarness');
+      gov = await deploy('GovernorBravoDelegator', [address(0), comp._address, root, govDelegate._address, 17280, 1, "100000000000000000000000"]);
+      mergeInterface(gov,govDelegate);
+      await send(gov, '_initiate');
 
       author = accounts[0];
 
@@ -132,7 +132,7 @@ describe('CrowdProposal', () => {
       it('should revert if not enough votes were delegated', async() => {
         // Propose reverts, not enough votes were delegated
         await expect(send(proposal, 'propose', {from: root}))
-        .rejects.toRevert("revert GovernorAlpha::propose: proposer votes below proposal threshold");
+        .rejects.toRevert("revert GovernorBravo::propose: proposer votes below proposal threshold");
 
         expect(await call(proposal, 'govProposalId')).toEqual('0');
       })
@@ -296,7 +296,7 @@ describe('CrowdProposal', () => {
 
          // Vote
          await expect(send(proposal, 'vote', {from: root}))
-          .rejects.toRevert("revert GovernorAlpha::_castVote: voting is closed");
+          .rejects.toRevert("revert GovernorBravo::castVoteInternal: voting is closed");
       })
 
       it('should revert if already voted', async() => {
@@ -311,7 +311,7 @@ describe('CrowdProposal', () => {
         await send(proposal, 'vote', {from: root});
 
         await expect(send(proposal, 'vote', {from: root}))
-          .rejects.toRevert("revert GovernorAlpha::_castVote: voter already voted");
+          .rejects.toRevert("revert GovernorBravo::castVoteInternal: voter already voted");
       })
     });
 
@@ -375,7 +375,7 @@ describe('CrowdProposal', () => {
 
         // An attempt to propose with not enough delegations
         await expect(send(proposal, 'propose', {from: root}))
-          .rejects.toRevert("revert GovernorAlpha::propose: proposer votes below proposal threshold");
+          .rejects.toRevert("revert GovernorBravo::propose: proposer votes below proposal threshold");
 
         // Time passes ..., nobody delegates, proposal author gives up and wants their staked COMP back
         expect(await call(proposal, 'govProposalId')).toEqual("0");

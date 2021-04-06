@@ -9,7 +9,7 @@ import './CrowdProposal.sol';
 contract CrowdProposalFactory {
     /// @notice `COMP` token contract address
     address public immutable comp;
-    /// @notice Compound protocol `GovernorAlpha` contract address
+    /// @notice Compound protocol `GovernorBravo` contract address
     address public immutable governor;
     /// @notice Minimum Comp tokens required to create a crowd proposal
     uint public immutable compStakeAmount;
@@ -20,7 +20,7 @@ contract CrowdProposalFactory {
      /**
      * @notice Construct a proposal factory for crowd proposals
      * @param comp_ `COMP` token contract address
-     * @param governor_ Compound protocol `GovernorAlpha` contract address
+     * @param governor_ Compound protocol `GovernorBravo` contract address
      * @param compStakeAmount_ The minimum amount of Comp tokes required for creation of a crowd proposal
      */
     constructor(address comp_,

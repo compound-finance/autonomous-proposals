@@ -1,4 +1,4 @@
-const { uint, address, encodeParameters } = require('./Helpers');
+const { uint, address, encodeParameters, mergeInterface } = require('./Helpers');
 
 describe('CrowdProposalFactory', () => {
     let comp, gov, root, a1, accounts;
@@ -9,7 +9,10 @@ describe('CrowdProposalFactory', () => {
     beforeEach(async() => {
       [root, a1, ...accounts] = saddle.accounts;
       comp = await deploy('Comp', [root]);
-      gov = await deploy('GovernorAlpha', [address(0), comp._address, root]);
+      govDelegate = await deploy('GovernorBravoDelegateHarness');
+      gov = await deploy('GovernorBravoDelegator', [address(0), comp._address, root, govDelegate._address, 17280, 1, "100000000000000000000000"]);
+      mergeInterface(gov,govDelegate);
+      await send(gov, '_initiate');
       factory = await deploy('CrowdProposalFactory', [comp._address, gov._address, uint(minCompThreshold)]);
     });
 
